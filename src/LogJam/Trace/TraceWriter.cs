@@ -1,6 +1,6 @@
 ﻿// --------------------------------------------------------------------------------------------------------------------
 // <copyright file="TraceWriter.cs">
-// Copyright (c) 2011-2015 https://github.com/logjam2.  
+// Copyright (c) 2011-2016 https://github.com/logjam2. 
 // </copyright>
 // Licensed under the <a href="https://github.com/logjam2/logjam/blob/master/LICENSE.txt">Apache License, Version 2.0</a>;
 // you may not use this file except in compliance with the License.
@@ -10,9 +10,9 @@
 namespace LogJam.Trace
 {
     using System;
-    using System.Diagnostics.Contracts;
     using System.Threading;
 
+    using LogJam.Shared.Internal;
     using LogJam.Writer;
 
 
@@ -37,13 +37,13 @@ namespace LogJam.Trace
         /// <param name="traceSwitch"></param>
         /// <param name="traceEntryWriter"></param>
         /// <param name="setupTracerFactory">
-        /// The <see cref="ITracerFactory" /> to use to report exceptions.  If <c>null</c>,
+        /// The <see cref="ITracerFactory" /> to use to report exceptions. If <c>null</c>,
         /// logging exceptions are not reported.
         /// </param>
         public TraceWriter(ITraceSwitch traceSwitch, IEntryWriter<TraceEntry> traceEntryWriter, ITracerFactory setupTracerFactory)
             : base(traceEntryWriter)
         {
-            Contract.Requires<ArgumentNullException>(traceSwitch != null);
+            Arg.NotNull(traceSwitch, nameof(traceSwitch));
 
             _traceSwitch = traceSwitch;
             _setupTracerFactory = setupTracerFactory;

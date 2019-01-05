@@ -1,0 +1,32 @@
+﻿# LogJam appveyor config
+
+# Build worker image (VM template)
+image: Visual Studio 2017
+
+init:
+  - git config --global core.autocrlf input
+
+configuration: Release
+
+build_script:
+- cmd: PowerShell -Version 2.0 .\build.ps1
+test: off
+
+artifacts:
+  - path: 'NuGetOut\*.nupkg'
+
+cache:
+  - '%USERPROFILE%\.nuget\packages -> **\*.csproj'  # NuGet package cache
+  - packages -> tools\packages.config
+  - C:\ProgramData\chocolatey\bin -> appveyor.yml
+  - C:\ProgramData\chocolatey\lib -> appveyor.yml
+
+deploy:
+  provider: NuGet
+  api_key:
+    secure: 15XA1s/euKrZG+MtcJyN6M5vmI383IrCtk93C4vloIQgOBfZFBZNAUgqQTzGisnA
+  skip_symbols: false
+  artifact: 'NuGetOut\*.nupkg'
+  on:
+    branch: master
+    appveyor_repo_tag: true

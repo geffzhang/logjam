@@ -1,6 +1,6 @@
 ﻿// --------------------------------------------------------------------------------------------------------------------
 // <copyright file="NoOpTraceWriter.cs">
-// Copyright (c) 2011-2015 https://github.com/logjam2.  
+// Copyright (c) 2011-2016 https://github.com/logjam2. 
 // </copyright>
 // Licensed under the <a href="https://github.com/logjam2/logjam/blob/master/LICENSE.txt">Apache License, Version 2.0</a>;
 // you may not use this file except in compliance with the License.
@@ -9,6 +9,8 @@
 
 namespace LogJam.Trace
 {
+	using System;
+
 
     /// <summary>
     /// An <see cref="ITraceWriter" /> that doesn't write any <see cref="TraceEntry" />s.
@@ -36,6 +38,8 @@ namespace LogJam.Trace
         {}
 
         public bool IsEnabled { get { return false; } }
+
+		public Type LogEntryType { get { return typeof(TraceEntry); } }
 
         public bool IsSynchronized { get { return true; } }
 

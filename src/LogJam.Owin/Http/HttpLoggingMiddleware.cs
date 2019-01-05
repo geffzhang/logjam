@@ -1,29 +1,28 @@
 ﻿// --------------------------------------------------------------------------------------------------------------------
 // <copyright file="HttpLoggingMiddleware.cs">
-// Copyright (c) 2011-2015 https://github.com/logjam2.  
+// Copyright (c) 2011-2018 https://github.com/logjam2.  
 // </copyright>
 // Licensed under the <a href="https://github.com/logjam2/logjam/blob/master/LICENSE.txt">Apache License, Version 2.0</a>;
 // you may not use this file except in compliance with the License.
 // --------------------------------------------------------------------------------------------------------------------
 
 
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
+
+using LogJam.Shared.Internal;
+using LogJam.Trace;
+using LogJam.Writer;
+
+using Microsoft.Owin;
+
 namespace LogJam.Owin.Http
 {
-    using System;
-    using System.Collections.Generic;
-    using System.Diagnostics.Contracts;
-    using System.IO;
-    using System.Linq;
-    using System.Text;
-    using System.Threading;
-    using System.Threading.Tasks;
-
-    using LogJam.Config;
-    using LogJam.Trace;
-    using LogJam.Writer;
-
-    using Microsoft.Owin;
-
 
     /// <summary>
     /// Middleware that logs HTTP requests and responses
@@ -41,48 +40,24 @@ namespace LogJam.Owin.Http
         private readonly Tracer _setupTracer;
         private readonly Tracer _tracer;
 
-        public HttpLoggingMiddleware(OwinMiddleware next, LogManager logManager, ITracerFactory tracerFactory, ILogWriterConfig[] logWriterConfigs)
+        public HttpLoggingMiddleware(OwinMiddleware next, LogManager logManager, ITracerFactory tracerFactory)
             : base(next)
         {
-            Contract.Requires<ArgumentNullException>(next != null);
-            Contract.Requires<ArgumentNullException>(logManager != null);
-            Contract.Requires<ArgumentNullException>(tracerFactory != null);
-            Contract.Requires<ArgumentNullException>(logWriterConfigs != null);
+            Arg.NotNull(next, nameof(next));
+            Arg.NotNull(logManager, nameof(logManager));
+            Arg.NotNull(tracerFactory, nameof(tracerFactory));
 
             _requestCounter = 0L;
 
             _setupTracer = logManager.SetupTracerFactory.TracerFor(this);
 
-            // Sort the configured LogWriters into request and response entry writers
-            var requestWriters = new List<IEntryWriter<HttpRequestEntry>>();
-            var responseWriters = new List<IEntryWriter<HttpResponseEntry>>();
-            foreach (var logWriterConfig in logWriterConfigs)
-            {
-                ILogWriter logWriter;
-				if (! logManager.TryGetLogWriter(logWriterConfig, out logWriter))
-                {
-                    _setupTracer.Error("Unable to setup HTTP logging for log target '{0}', no LogWriter exists for this configuration.", logWriterConfig);
-                    continue;
-                }
+            _requestEntryWriter = logManager.GetEntryWriter<HttpRequestEntry>();
+            _responseEntryWriter = logManager.GetEntryWriter<HttpResponseEntry>();
 
-                IEntryWriter<HttpRequestEntry> requestWriter;
-                if (logWriter.TryGetEntryWriter(out requestWriter))
-                {
-                    requestWriters.Add(requestWriter);
-                }
-                IEntryWriter<HttpResponseEntry> responseWriter;
-                if (logWriter.TryGetEntryWriter(out responseWriter))
-                {
-                    responseWriters.Add(responseWriter);
-                }
-            }
-
-            _requestEntryWriter = requestWriters.GetSingleEntryWriter();
-            _responseEntryWriter = responseWriters.GetSingleEntryWriter();
-
+            const string startedMessage = "OWIN HTTP logging started.";
+            _setupTracer.Info(startedMessage);
             _tracer = tracerFactory.TracerFor(this);
-
-            _setupTracer.Info("OWIN HTTP logging setup for: {0}", string.Join(", ", (IEnumerable<ILogWriterConfig>) logWriterConfigs));
+            _tracer.Info(startedMessage);
         }
 
         public void Dispose()
@@ -92,8 +67,6 @@ namespace LogJam.Owin.Http
 
         public override Task Invoke(IOwinContext owinContext)
         {
-            Contract.Assert(owinContext != null);
-
             DateTimeOffset requestStarted = DateTimeOffset.Now;
 
             // Create RequestNumber
@@ -137,17 +110,19 @@ namespace LogJam.Owin.Http
                 IOwinResponse response = owinContext.Response;
                 if (response == null)
                 {
-                    _tracer.Error("Cannot log HTTP response - no owinContext.Response.  Request #{0} {1} {2}", requestNum, requestMethod, requestUri);
+                    _tracer.Error("Cannot log HTTP response - no owinContext.Response. Request #{0} {1} {2}", requestNum, requestMethod, requestUri);
                 }
                 else
                 {
                     HttpResponseEntry responseEntry;
                     responseEntry.RequestNumber = requestNum;
-                    responseEntry.Ttfb = DateTimeOffset.Now - requestStarted;
+                    responseEntry.RequestCompleted = DateTimeOffset.Now;
+                    responseEntry.Ttfb = responseEntry.RequestCompleted - requestStarted;
                     responseEntry.Method = requestMethod;
                     responseEntry.Uri = requestUri;
                     responseEntry.HttpStatusCode = (short) response.StatusCode;
                     responseEntry.HttpReasonPhrase = response.ReasonPhrase;
+
                     // Workaround for issue in Owin.Host.SystemWeb:
                     //	  response.Headers.Count is inaccurate, so calling response.Headers.ToArray()
                     //	  will throw an exception.
@@ -182,7 +157,7 @@ namespace LogJam.Owin.Http
 
             Stream streamToRead;
             if (! bodyStream.CanSeek)
-            { // Need to copy the stream into a buffer, it will replace the previous stream.
+            { // Need to copy the stream into a fieldBuffer, it will replace the previous stream.
                 streamToRead = new MemoryStream(1024);
                 bodyStream.CopyTo(streamToRead);
             }

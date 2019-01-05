@@ -1,20 +1,26 @@
-
+﻿
 *This project was previously hosted at [https://logjam.codeplex.com/](https://logjam.codeplex.com/)*
 
 # What is LogJam?
-LogJam is a modern, efficient, and productive system for trace logging and metrics logging for all projects. 
+LogJam is a modern, efficient, and productive system for trace logging and metrics logging for all projects.
 
-LogJam is currently in beta and is initially focused on the needs of C# and web developers.  
+LogJam is currently in beta and is initially focused on the needs of C# and web developers.
 
 LogJam packages are available via NuGet: [http://www.nuget.org/packages?q=logjam](http://www.nuget.org/packages?q=logjam)
 
-The main LogJam library targets .NET 4.0 and later, though LogJam integrations may use later versions based on the requirements of the project that is integrated with.
+LogJam prerelease packages are available via this private NuGet feed: [https://ci.appveyor.com/nuget/logjam/](https://ci.appveyor.com/nuget/logjam/)
+
+The main LogJam library targets .NET 4.5 and later, and netstandard 1.3; though LogJam integration projects may use later versions based on the requirements of the project that is integrated with.
+
+<a href="https://ci.appveyor.com/api/projects/status/github/logjam2/logjam">
+<img src="https://ci.appveyor.com/api/projects/status/github/logjam2/logjam?svg=true" alt="Appveyor build status" width="150" style="margin:1em"></a>
 
 # Current Status
 LogJam is productive and useful for these types of projects:
 
 * .NET libraries
 * .NET Command-line applications
+* ASP.NET Core applications
 * .NET Web applications using OWIN and/or Web API
 * XUnit 2.0 tests
 
@@ -30,7 +36,7 @@ Its features include:
   * Logging to text uses replaceable formatters
 * Threadsafe log writing on a background thread - improves performance for logging clients.
 * All internal setup operations are traced to a setup log
-* Best-of-breed efficiency - including minimizing locks and impact on the managed heap
+* Best-of-breed efficiency - including minimizing locks and minimal impact on the managed heap
 
 Current API integrations:
 
@@ -45,6 +51,8 @@ Current log targets:
 * .NET debugger
 * XUnit 2.0 test output
 * ```List<TLogEntry>``` - in memory collection of log entries.
+* Log files
+* Rotating log files
 
 ## Near-term Goals
 * Add instrumentation classes
@@ -62,3 +70,23 @@ LogJam intends to be a multi-project framework that provides best-of-breed loggi
 * Support central management of logging configuration - across many servers and applications
 * Web UI for managing configuration and browsing/querying logs across server farms and applications
 * Optional integration with ETW (Event Tracing for Windows)
+
+# Building LogJam
+
+```
+git clone git@github.com:logjam2/logjam.git
+cd logjam
+.\build.ps1
+```
+
+## List all build targets
+
+```
+.\build.ps1 -ShowDescription
+```
+
+## Running Unit Tests
+
+```
+.\build.ps1 -Target Run-Unit-Tests
+```

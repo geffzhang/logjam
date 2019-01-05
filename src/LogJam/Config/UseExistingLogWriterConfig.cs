@@ -1,6 +1,6 @@
 ﻿// --------------------------------------------------------------------------------------------------------------------
 // <copyright file="UseExistingLogWriterConfig.cs">
-// Copyright (c) 2011-2015 https://github.com/logjam2.  
+// Copyright (c) 2011-2016 https://github.com/logjam2. 
 // </copyright>
 // Licensed under the <a href="https://github.com/logjam2/logjam/blob/master/LICENSE.txt">Apache License, Version 2.0</a>;
 // you may not use this file except in compliance with the License.
@@ -10,8 +10,8 @@
 namespace LogJam.Config
 {
     using System;
-    using System.Diagnostics.Contracts;
 
+    using LogJam.Shared.Internal;
     using LogJam.Trace;
     using LogJam.Writer;
 
@@ -25,6 +25,7 @@ namespace LogJam.Config
 
         private readonly ILogWriter _logWriter;
 
+
         /// <summary>
         /// Creates a new <see cref="UseExistingLogWriterConfig" /> instance, which will result in
         /// log entries being written to <paramref name="logWriter" />.
@@ -32,11 +33,11 @@ namespace LogJam.Config
         /// <param name="logWriter"></param>
         /// <param name="disposeOnStop">
         /// Set to <c>true</c> to dispose <paramref name="logWriter" /> when the
-        /// <see cref="LogManager" /> is stopped.  By default <c>disposeOnStop</c> is false.
+        /// <see cref="LogManager" /> is stopped. By default <c>disposeOnStop</c> is false.
         /// </param>
         public UseExistingLogWriterConfig(ILogWriter logWriter, bool disposeOnStop = false)
         {
-            Contract.Requires<ArgumentNullException>(logWriter != null);
+            Arg.NotNull(logWriter, nameof(logWriter));
 
             _logWriter = logWriter;
             DisposeOnStop = disposeOnStop;
@@ -47,6 +48,22 @@ namespace LogJam.Config
         public override ILogWriter CreateLogWriter(ITracerFactory setupTracerFactory)
         {
             return _logWriter;
+        }
+
+        /// <summary>
+        /// Override <c>GetHashCode()</c> and <see cref="Equals"/> so that 2 references to the same ILogWriter don't result in duplicate config entries.
+        /// </summary>
+        /// <returns></returns>
+        public override int GetHashCode()
+        {
+            return _logWriter.GetHashCode();
+        }
+
+        public override bool Equals(object obj)
+        {
+            var other = obj as UseExistingLogWriterConfig;
+            return ((other != null) &&
+                    Equals(this._logWriter, other._logWriter));
         }
 
     }

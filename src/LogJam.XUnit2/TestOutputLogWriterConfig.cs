@@ -1,6 +1,6 @@
 ﻿// --------------------------------------------------------------------------------------------------------------------
 // <copyright file="TestOutputLogWriterConfig.cs">
-// Copyright (c) 2011-2015 https://github.com/logjam2.  
+// Copyright (c) 2011-2016 https://github.com/logjam2.  
 // </copyright>
 // Licensed under the <a href="https://github.com/logjam2/logjam/blob/master/LICENSE.txt">Apache License, Version 2.0</a>;
 // you may not use this file except in compliance with the License.
@@ -9,61 +9,72 @@
 
 namespace LogJam.XUnit2
 {
-    using System;
-    using System.Collections.Generic;
-    using System.Diagnostics.Contracts;
-
     using LogJam.Config;
-    using LogJam.Format;
+    using LogJam.Shared.Internal;
     using LogJam.Trace;
-    using LogJam.Writer;
+    using LogJam.Writer.Text;
 
     using Xunit.Abstractions;
 
 
     /// <summary>
-    /// Creates a <see cref="TestOutputLogWriter" /> using the specified xunit2 <see cref="ITestOutputHelper" />.
+    /// Creates a <see cref="TextLogWriter" /> that writes to a <see cref="TestOutputFormatWriter"/> using the specified xunit2 <see cref="ITestOutputHelper" />.
     /// </summary>
-    public sealed class TestOutputLogWriterConfig : TextLogWriterConfig
+    public sealed class TestOutputLogWriterConfig : TextLogWriterConfig, ITestOutputAccessor
     {
 
-        public TestOutputLogWriterConfig()
-        {}
+        private readonly ProxyTestOutputAccessor _proxyTestOutputAccessor;
 
-        public TestOutputLogWriterConfig(ITestOutputHelper testOutput)
+        /// <summary>
+        /// Initializes a new <see cref="TestOutputLogWriterConfig"/>.
+        /// </summary>
+        public TestOutputLogWriterConfig()
         {
-            Contract.Requires<ArgumentNullException>(testOutput != null);
+            _proxyTestOutputAccessor = new ProxyTestOutputAccessor();
+            _proxyTestOutputAccessor.AddTarget(this);
+
+            // By default, tests are logged with an offset from start time, and no clock timestamp
+            IncludeTimeOffset = true;
+            IncludeTime = false;
+        }
+
+        /// <summary>
+        /// Creates a new <see cref="TestOutputLogWriterConfig"/> that is configured to use <paramref name="testOutput"/>.
+        /// </summary>
+        /// <param name="testOutput"></param>
+        public TestOutputLogWriterConfig(ITestOutputHelper testOutput)
+            : this()
+        {
+            Arg.NotNull(testOutput, nameof(testOutput));
 
             TestOutput = testOutput;
         }
 
         /// <summary>
-        /// The <see cref="ITestOutputHelper" /> to use to send log output to.  Must be set before logging begins.
+        /// The <see cref="ITestOutputHelper" /> to use to send log output to.
         /// </summary>
         public ITestOutputHelper TestOutput { get; set; }
 
         /// <summary>
-        /// Configures use of <see cref="TestOutputTraceFormatter" />, which includes formatting showing the time since
-        /// the test started, for each test.
+        /// A <see cref="ITestOutputAccessor" /> that can be used to change the test output target after logging is started.
         /// </summary>
-        /// <returns></returns>
-        public TestOutputLogWriterConfig UseTestTraceFormat()
-        {
-            Format(new TestOutputTraceFormatter());
-            return this;
-        }
+        public ITestOutputAccessor TestOutputAccessor { get { return _proxyTestOutputAccessor; } }
 
-        public override ILogWriter CreateLogWriter(ITracerFactory setupTracerFactory)
+        /// <summary>
+        /// <c>true</c> to include the time offset (since <see cref="TestOutputFormatWriter.StartTimeUtc" />)  when formatting timestamps.
+        /// </summary>
+        public bool IncludeTimeOffset { get; set; }
+
+        protected override FormatWriter CreateFormatWriter(ITracerFactory setupTracerFactory)
         {
             var testOutputHelper = TestOutput;
-            if (testOutputHelper == null)
-            {
-                throw new LogJamXUnitSetupException("TestOutputLogWriterConfig.TestOutput must be set before logging.", this);
-            }
 
-            var logWriter = new TestOutputLogWriter(testOutputHelper, setupTracerFactory);
-            ApplyConfiguredFormatters(logWriter);
-            return logWriter;
+            var formatWriter = new TestOutputFormatWriter(testOutputHelper, setupTracerFactory)
+                               {
+                                   IncludeTimeOffset = IncludeTimeOffset
+                               };
+            _proxyTestOutputAccessor.AddTarget(formatWriter);
+            return formatWriter;
         }
 
     }

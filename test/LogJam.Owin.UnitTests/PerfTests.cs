@@ -1,48 +1,42 @@
 ﻿// --------------------------------------------------------------------------------------------------------------------
 // <copyright file="PerfTests.cs">
-// Copyright (c) 2011-2015 https://github.com/logjam2.  
+// Copyright (c) 2011-2018 https://github.com/logjam2.  
 // </copyright>
 // Licensed under the <a href="https://github.com/logjam2/logjam/blob/master/LICENSE.txt">Apache License, Version 2.0</a>;
 // you may not use this file except in compliance with the License.
 // --------------------------------------------------------------------------------------------------------------------
 
 
+using System;
+using System.Diagnostics;
+using System.IO;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+
+using Microsoft.Owin.Testing;
+
+using Xunit;
+using Xunit.Abstractions;
+
+using TraceLevel = LogJam.Trace.TraceLevel;
+
 namespace LogJam.Owin.UnitTests
 {
-    using System;
-    using System.Diagnostics;
-    using System.Diagnostics.Contracts;
-    using System.IO;
-    using System.Linq;
-    using System.Threading;
-    using System.Threading.Tasks;
-
-    using Microsoft.Owin.Testing;
-
-    using Xunit;
-    using Xunit.Abstractions;
-
-
-    using TraceLevel = LogJam.Trace.TraceLevel;
-
 
     /// <summary>
     /// Runs perf test on standard <see cref="LogJam.Owin" /> setup.
     /// </summary>
     public sealed class PerfTests : BaseOwinTest
     {
-        private readonly ITestOutputHelper _testOutputHelper;
 
         public PerfTests(ITestOutputHelper testOutputHelper)
-        {
-            Contract.Requires<ArgumentNullException>(testOutputHelper != null);
-
-            _testOutputHelper = testOutputHelper;
-        }
+            : base(testOutputHelper)
+        { }
 
         [Theory]
         [InlineData(4, 1000, 0)]
-        [InlineData(4, 1000, 0)]
+        [InlineData(5, 1000, 0)]
         [InlineData(4, 1000, 10)]
         //[InlineData(40, 1000, 30)]
         public void ParallelTraceTest(int threads, int requestsPerThread, int tracesPerRequest)
@@ -57,20 +51,21 @@ namespace LogJam.Owin.UnitTests
                 Action testThread = () =>
                                     {
                                         int threadId = Thread.CurrentThread.ManagedThreadId;
-                                        _testOutputHelper.WriteLine("{0}: Starting requests on thread {1}", overallStopwatch.Elapsed, threadId);
+                                        testOutputHelper.WriteLine("{0}: Starting requests on thread {1}", overallStopwatch.Elapsed, threadId);
                                         var stopWatch = Stopwatch.StartNew();
 
                                         for (int i = 0; i < requestsPerThread; ++i)
                                         {
                                             IssueTraceRequest(testServer, tracesPerRequest);
                                         }
+
                                         stopWatch.Stop();
 
-                                        _testOutputHelper.WriteLine("{0}: Completed {1} requests on thread {2} in {3}",
-                                                          overallStopwatch.Elapsed,
-                                                          requestsPerThread,
-                                                          threadId,
-                                                          stopWatch.Elapsed);
+                                        testOutputHelper.WriteLine("{0}: Completed {1} requests on thread {2} in {3}",
+                                                                   overallStopwatch.Elapsed,
+                                                                   requestsPerThread,
+                                                                   threadId,
+                                                                   stopWatch.Elapsed);
                                     };
 
                 Parallel.Invoke(Enumerable.Repeat(testThread, threads).ToArray());

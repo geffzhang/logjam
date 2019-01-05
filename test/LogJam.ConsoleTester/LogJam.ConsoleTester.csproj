@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFrameworks>netcoreapp2.0;net452;net471</TargetFrameworks>
+    <Title>LogJam.ConsoleTester</Title>
+    <Description>Command-line app for exercising console logging.</Description>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="xunit.assert" Version="2.3.1" />
+  </ItemGroup>
+  
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\LogJam\LogJam.csproj" />
+    <ProjectReference Include="..\LogJam.Test.Shared\LogJam.Test.Shared.csproj" />
+  </ItemGroup>
+
+</Project>

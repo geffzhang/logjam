@@ -1,6 +1,6 @@
-﻿// --------------------------------------------------------------------------------------------------------------------
+// --------------------------------------------------------------------------------------------------------------------
 // <copyright file="ListLogWriter.cs">
-// Copyright (c) 2011-2015 https://github.com/logjam2.  
+// Copyright (c) 2011-2016 https://github.com/logjam2. 
 // </copyright>
 // Licensed under the <a href="https://github.com/logjam2/logjam/blob/master/LICENSE.txt">Apache License, Version 2.0</a>;
 // you may not use this file except in compliance with the License.
@@ -11,20 +11,20 @@ namespace LogJam.Writer
 {
     using System.Collections;
     using System.Collections.Generic;
-    using System.Linq;
 
+    using LogJam.Shared.Internal;
     using LogJam.Trace;
     using LogJam.Util;
 
 
-	/// <summary>
+    /// <summary>
     /// Appends all log entries to a <see cref="List{T}" />.
     /// </summary>
     public sealed class ListLogWriter<TEntry> : SingleEntryTypeLogWriter<TEntry>, IEnumerable<TEntry>, IStartable
         where TEntry : ILogEntry
     {
 
-        private readonly List<TEntry> _entryList;
+        private readonly IList<TEntry> _entryList;
         private readonly bool _isSynchronized;
 
         /// <summary>
@@ -33,14 +33,36 @@ namespace LogJam.Writer
         /// <param name="setupTracerFactory"></param>
         /// <param name="synchronize">
         /// If set to <c>true</c> (the default), writes are synchronized, meaning entries are only added to
-        /// the list one thread at a time using a <c>lock</c>.  If <c>false</c>, writes are not synchronized by this class, so
+        /// the list one thread at a time using a <c>lock</c>. If <c>false</c>, writes are not synchronized by this class, so
         /// another
         /// mechanism must be used to synchronize writes from multiple threads.
         /// </param>
         public ListLogWriter(ITracerFactory setupTracerFactory, bool synchronize = true)
             : base(setupTracerFactory)
         {
+            Arg.NotNull(setupTracerFactory, nameof(setupTracerFactory));
+
             _entryList = new List<TEntry>();
+            _isSynchronized = synchronize;
+        }
+
+        /// <summary>
+        /// Creates a new <see cref="ListLogWriter{TEntry}" /> using <paramref name="entryList"/>.
+        /// </summary>
+        /// <param name="setupTracerFactory"></param>
+        /// <param name="entryList">The <see cref="IList{T}"/> to write to.</param>
+        /// <param name="synchronize">
+        /// If set to <c>true</c> (the default), writes are synchronized, meaning entries are only added to
+        /// the list one thread at a time using a <c>lock</c>. If <c>false</c>, writes are not synchronized by this class, so
+        /// another
+        /// mechanism must be used to synchronize writes from multiple threads.
+        /// </param>
+        public ListLogWriter(ITracerFactory setupTracerFactory, IList<TEntry> entryList, bool synchronize = true)
+            : base(setupTracerFactory)
+        {
+            Arg.NotNull(setupTracerFactory, nameof(setupTracerFactory));
+
+            _entryList = entryList ?? new List<TEntry>();
             _isSynchronized = synchronize;
         }
 
@@ -61,9 +83,9 @@ namespace LogJam.Writer
         /// <param name="entry">A <typeparamref name="TEntry" />.</param>
         public override void Write(ref TEntry entry)
         {
-            if (IsStarted)
+            if (IsEnabled)
             {
-                if (! _isSynchronized)
+                if (!_isSynchronized)
                 {
                     _entryList.Add(entry);
                 }
@@ -81,7 +103,7 @@ namespace LogJam.Writer
 
         public IEnumerator<TEntry> GetEnumerator()
         {
-			return new GrowingListEnumerator<TEntry>(_entryList);
+            return new GrowingListEnumerator<TEntry>(_entryList);
         }
 
         IEnumerator IEnumerable.GetEnumerator()

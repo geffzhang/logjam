@@ -1,6 +1,6 @@
 ﻿// --------------------------------------------------------------------------------------------------------------------
 // <copyright file="TraceEntry.cs">
-// Copyright (c) 2011-2015 https://github.com/logjam2.  
+// Copyright (c) 2011-2016 https://github.com/logjam2. 
 // </copyright>
 // Licensed under the <a href="https://github.com/logjam2/logjam/blob/master/LICENSE.txt">Apache License, Version 2.0</a>;
 // you may not use this file except in compliance with the License.
@@ -11,8 +11,8 @@ namespace LogJam.Trace
 {
     using System;
 
-    using LogJam.Format;
     using LogJam.Trace.Format;
+    using LogJam.Writer.Text;
 
 
     /// <summary>
@@ -49,7 +49,7 @@ namespace LogJam.Trace
 
         public override string ToString()
         {
-            return string.Format("{0,-7}\t{1,-50}\t{2}", TraceLevel, TracerName, Message);
+            return string.Format("{0,-7}  {1,-50}  {2}", TraceLevel, TracerName, Message);
         }
 
         public TraceEntry(string tracerName, TraceLevel traceLevel, string message, object details = null)

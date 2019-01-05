@@ -1,6 +1,6 @@
-﻿// --------------------------------------------------------------------------------------------------------------------
+// --------------------------------------------------------------------------------------------------------------------
 // <copyright file="ExampleTestTracing.cs">
-// Copyright (c) 2011-2015 https://github.com/logjam2.  
+// Copyright (c) 2011-2016 https://github.com/logjam2. 
 // </copyright>
 // Licensed under the <a href="https://github.com/logjam2/logjam/blob/master/LICENSE.txt">Apache License, Version 2.0</a>;
 // you may not use this file except in compliance with the License.
@@ -12,6 +12,7 @@ namespace LogJam.XUnit2.UnitTests
     using System;
 
     using LogJam.Trace;
+    using LogJam.Trace.Format;
     using LogJam.Trace.Switches;
 
     using Xunit;
@@ -19,9 +20,9 @@ namespace LogJam.XUnit2.UnitTests
 
 
     /// <summary>
-    /// Exercises use of TestOutputLogWriter.
+    /// Exercises use of TestOutputFormatWriter.
     /// </summary>
-    public sealed class ExampleTestTracing
+    public sealed class ExampleTestTracing : IDisposable
     {
 
         private readonly ThresholdTraceSwitch _traceSwitch;
@@ -30,8 +31,9 @@ namespace LogJam.XUnit2.UnitTests
         public ExampleTestTracing(ITestOutputHelper testOutput)
         {
             _traceSwitch = new ThresholdTraceSwitch(TraceLevel.Debug);
-            var logWriterConfig = new TestOutputLogWriterConfig(testOutput).UseTestTraceFormat();
-            _traceManager = new TraceManager(logWriterConfig, _traceSwitch);
+            _traceManager = new TraceManager();
+            _traceManager.Config.TraceToTestOutput(testOutput,
+                                                   traceSwitch: _traceSwitch);
         }
 
         public TraceLevel TraceThreshold { get { return _traceSwitch.Threshold; } set { _traceSwitch.Threshold = value; } }
@@ -42,7 +44,7 @@ namespace LogJam.XUnit2.UnitTests
         }
 
         /// <summary>
-        /// Due to use of <see cref="TestOutputLogWriter" /> and <see cref="ITestOutputHelper" /> by this test class, all traces
+        /// Due to use of <see cref="TestOutputFormatWriter" /> and <see cref="ITestOutputHelper" /> by this test class, all traces
         /// that pass the configured threshold are written to the test output buffer.
         /// </summary>
         [Fact]

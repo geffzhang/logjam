@@ -1,21 +1,26 @@
 ﻿// --------------------------------------------------------------------------------------------------------------------
 // <copyright file="TraceManagerConfigFluentExtensions.cs">
-// Copyright (c) 2011-2015 https://github.com/logjam2.  
+// Copyright (c) 2011-2016 https://github.com/logjam2. 
 // </copyright>
 // Licensed under the <a href="https://github.com/logjam2/logjam/blob/master/LICENSE.txt">Apache License, Version 2.0</a>;
 // you may not use this file except in compliance with the License.
 // --------------------------------------------------------------------------------------------------------------------
 
 
+using LogJam.Config.Initializer;
+
 namespace LogJam.Trace.Config
 {
     using System;
-    using System.Diagnostics.Contracts;
+    using System.Collections.Generic;
+    using System.IO;
+    using System.Linq;
 
     using LogJam.Config;
-    using LogJam.Format;
-    using LogJam.Trace.Format;
+    using LogJam.Shared.Internal;
+    using LogJam.Util;
     using LogJam.Writer;
+    using LogJam.Writer.Text;
 
 
     /// <summary>
@@ -25,165 +30,340 @@ namespace LogJam.Trace.Config
     {
 
         /// <summary>
+        /// Trace to the text logwriter configured by <paramref name="textLogWriterConfig" />.
+        /// </summary>
+        /// <param name="traceManagerConfig"></param>
+        /// <param name="textLogWriterConfig"></param>
+        /// <param name="switchSet"></param>
+        /// <param name="traceFormatter"></param>
+        /// <returns></returns>
+        public static TraceWriterConfig TraceTo(this TraceManagerConfig traceManagerConfig,
+                                                TextLogWriterConfig textLogWriterConfig,
+                                                SwitchSet switchSet,
+                                                EntryFormatter<TraceEntry> traceFormatter = null)
+        {
+            Arg.NotNull(traceManagerConfig, nameof(traceManagerConfig));
+            Arg.NotNull(textLogWriterConfig, nameof(textLogWriterConfig));
+            Arg.NotNull(switchSet, nameof(switchSet));
+
+            var traceWriterConfig = new TraceWriterConfig(textLogWriterConfig, switchSet);
+            textLogWriterConfig.Format(traceFormatter);
+            traceManagerConfig.Writers.Add(traceWriterConfig);
+            return traceWriterConfig;
+        }
+
+        /// <summary>
+        /// Trace to the logwriter configured by <paramref name="textLogWriterConfig" />.
+        /// </summary>
+        /// <param name="traceManagerConfig"></param>
+        /// <param name="textLogWriterConfig"></param>
+        /// <param name="tracerName"></param>
+        /// <param name="traceSwitch"></param>
+        /// <param name="traceFormatter"></param>
+        /// <returns></returns>
+        public static TraceWriterConfig TraceTo(this TraceManagerConfig traceManagerConfig,
+                                                TextLogWriterConfig textLogWriterConfig,
+                                                string tracerName = Tracer.All,
+                                                ITraceSwitch traceSwitch = null,
+                                                EntryFormatter<TraceEntry> traceFormatter = null)
+        {
+            Arg.NotNull(traceManagerConfig, nameof(traceManagerConfig));
+            Arg.NotNull(textLogWriterConfig, nameof(textLogWriterConfig));
+            Arg.NotNull(tracerName, nameof(tracerName));
+
+            return TraceTo(traceManagerConfig, textLogWriterConfig, CreateSwitchSet(tracerName, traceSwitch), traceFormatter);
+        }
+
+        /// <summary>
         /// Trace to the logwriter configured by <paramref name="logWriterConfig" />.
         /// </summary>
-        /// <param name="config"></param>
+        /// <param name="traceManagerConfig"></param>
         /// <param name="logWriterConfig"></param>
         /// <param name="switchSet"></param>
         /// <returns></returns>
-        public static TraceWriterConfig TraceTo(this TraceManagerConfig config, LogWriterConfig logWriterConfig, SwitchSet switchSet)
+        public static TraceWriterConfig TraceTo(this TraceManagerConfig traceManagerConfig, LogWriterConfig logWriterConfig, SwitchSet switchSet)
         {
-            Contract.Requires<ArgumentNullException>(config != null);
-            Contract.Requires<ArgumentNullException>(logWriterConfig != null);
-            Contract.Requires<ArgumentNullException>(switchSet != null);
+            Arg.NotNull(traceManagerConfig, nameof(traceManagerConfig));
+            Arg.NotNull(logWriterConfig, nameof(logWriterConfig));
+            Arg.NotNull(switchSet, nameof(switchSet));
 
             var traceWriterConfig = new TraceWriterConfig(logWriterConfig, switchSet);
-            config.Writers.Add(traceWriterConfig);
+            traceManagerConfig.Writers.Add(traceWriterConfig);
             return traceWriterConfig;
         }
 
         /// <summary>
         /// Trace to the logwriter configured by <paramref name="logWriterConfig" />.
         /// </summary>
-        /// <param name="config"></param>
+        /// <param name="traceManagerConfig"></param>
         /// <param name="logWriterConfig"></param>
         /// <param name="tracerName"></param>
         /// <param name="traceSwitch"></param>
         /// <returns></returns>
-        public static TraceWriterConfig TraceTo(this TraceManagerConfig config, LogWriterConfig logWriterConfig, string tracerName = Tracer.All, ITraceSwitch traceSwitch = null)
+        public static TraceWriterConfig TraceTo(this TraceManagerConfig traceManagerConfig,
+                                                LogWriterConfig logWriterConfig,
+                                                string tracerName = Tracer.All,
+                                                ITraceSwitch traceSwitch = null)
         {
-            Contract.Requires<ArgumentNullException>(config != null);
-            Contract.Requires<ArgumentNullException>(logWriterConfig != null);
-            Contract.Requires<ArgumentNullException>(tracerName != null);
+            Arg.NotNull(traceManagerConfig, nameof(traceManagerConfig));
+            Arg.NotNull(logWriterConfig, nameof(logWriterConfig));
+            Arg.NotNull(tracerName, nameof(tracerName));
 
-            if (traceSwitch == null)
+            return TraceTo(traceManagerConfig, logWriterConfig, CreateSwitchSet(tracerName, traceSwitch));
+        }
+
+        public static TraceWriterConfig TraceTo(this TraceManagerConfig traceManagerConfig,
+                                                TextWriter textWriter,
+                                                SwitchSet switchSet,
+                                                EntryFormatter<TraceEntry> traceFormatter = null)
+        {
+            Arg.NotNull(traceManagerConfig, nameof(traceManagerConfig));
+            Arg.NotNull(textWriter, nameof(textWriter));
+            Arg.NotNull(switchSet, nameof(switchSet));
+
+            return TraceTo(traceManagerConfig, new TextWriterLogWriterConfig(textWriter), switchSet, traceFormatter);
+        }
+
+        public static TraceWriterConfig TraceTo(this TraceManagerConfig traceManagerConfig,
+                                                Func<TextWriter> createTextWriterFunc,
+                                                SwitchSet switchSet,
+                                                EntryFormatter<TraceEntry> traceFormatter = null)
+        {
+            Arg.NotNull(traceManagerConfig, nameof(traceManagerConfig));
+            Arg.NotNull(createTextWriterFunc, nameof(createTextWriterFunc));
+            Arg.NotNull(switchSet, nameof(switchSet));
+
+            return TraceTo(traceManagerConfig, new TextWriterLogWriterConfig(createTextWriterFunc), switchSet, traceFormatter);
+        }
+
+        public static TraceWriterConfig TraceTo(this TraceManagerConfig traceManagerConfig,
+                                                TextWriter textWriter,
+                                                string tracerName = Tracer.All,
+                                                ITraceSwitch traceSwitch = null,
+                                                EntryFormatter<TraceEntry> traceFormatter = null)
+        {
+            Arg.NotNull(traceManagerConfig, nameof(traceManagerConfig));
+            Arg.NotNull(tracerName, nameof(tracerName));
+
+            return TraceTo(traceManagerConfig, textWriter, CreateSwitchSet(tracerName, traceSwitch), traceFormatter);
+        }
+
+        public static TraceWriterConfig TraceTo(this TraceManagerConfig traceManagerConfig,
+                                                Func<TextWriter> createTextWriterFunc,
+                                                string tracerName = Tracer.All,
+                                                ITraceSwitch traceSwitch = null,
+                                                EntryFormatter<TraceEntry> traceFormatter = null)
+        {
+            Arg.NotNull(traceManagerConfig, nameof(traceManagerConfig));
+            Arg.NotNull(tracerName, nameof(tracerName));
+
+            return TraceTo(traceManagerConfig, createTextWriterFunc, CreateSwitchSet(tracerName, traceSwitch), traceFormatter);
+        }
+
+        /// <summary>
+        /// Enables sending trace messages to all specified <paramref name="logWriterConfigs" />. This method can be called
+        /// multiple times
+        /// to specify different switch settings for different logWriters.
+        /// </summary>
+        /// <param name="traceManagerConfig"></param>
+        /// <param name="logWriterConfigs"></param>
+        /// <param name="switches"></param>
+        /// <param name="traceFormatter"></param>
+        /// <returns></returns>
+        public static void TraceTo(this TraceManagerConfig traceManagerConfig,
+                                   IEnumerable<ILogWriterConfig> logWriterConfigs,
+                                   SwitchSet switches = null,
+                                   EntryFormatter<TraceEntry> traceFormatter = null)
+        {
+            Arg.NotNull(traceManagerConfig, nameof(traceManagerConfig));
+            Arg.NotNull(logWriterConfigs, nameof(logWriterConfigs));
+
+            if (switches == null)
             {
-                traceSwitch = TraceManagerConfig.CreateDefaultTraceSwitch();
+                switches = TraceManagerConfig.CreateDefaultSwitchSet();
             }
-            var switches = new SwitchSet()
-                           {
-                               { tracerName, traceSwitch }
-                           };
-            return TraceTo(config, logWriterConfig, switches);
+
+            logWriterConfigs.Format(traceFormatter);
+            foreach (var logWriterConfig in logWriterConfigs)
+            {
+                traceManagerConfig.Writers.Add(new TraceWriterConfig(logWriterConfig, switches));
+            }
+        }
+
+        /// <summary>
+        /// Enables sending trace messages to all configured log writers.
+        /// </summary>
+        /// <param name="traceManagerConfig"></param>
+        /// <param name="switches"></param>
+        /// <param name="traceFormatter"></param>
+        /// <returns></returns>
+        public static TraceManagerConfig TraceToAllLogWriters(this TraceManagerConfig traceManagerConfig,
+                                                SwitchSet switches = null,
+                                                EntryFormatter<TraceEntry> traceFormatter = null)
+        {
+            Arg.NotNull(traceManagerConfig, nameof(traceManagerConfig));
+
+            if (switches == null)
+            {
+                switches = TraceManagerConfig.CreateDefaultSwitchSet();
+            }
+
+            traceManagerConfig.LogManagerConfig.FormatAllTextLogWriters(traceFormatter);
+
+            traceManagerConfig.LogManagerConfig.Initializers.Add(new UpdateLogWriterConfigInitializer<ILogWriterConfig>(logWriterConfig =>
+                                                                                                                           {
+                                                                                                                               if (! traceManagerConfig.HasTraceWriterFor(logWriterConfig))
+                                                                                                                               {
+                                                                                                                                   traceManagerConfig.Writers.Add(new TraceWriterConfig(logWriterConfig, switches));
+                                                                                                                               }
+                                                                                                                           } ));
+
+            return traceManagerConfig;
         }
 
         /// <summary>
         /// Use an existing <paramref name="logWriter" /> along with the specified <paramref name="switchSet" />.
         /// </summary>
-        /// <param name="config"></param>
+        /// <param name="traceManagerConfig"></param>
         /// <param name="logWriter"></param>
         /// <param name="switchSet"></param>
-        public static TraceWriterConfig UseLogWriter(this TraceManagerConfig config, ILogWriter logWriter, SwitchSet switchSet)
+        public static TraceWriterConfig UseLogWriter(this TraceManagerConfig traceManagerConfig, ILogWriter logWriter, SwitchSet switchSet)
         {
-            Contract.Requires<ArgumentNullException>(config != null);
-            Contract.Requires<ArgumentNullException>(logWriter != null);
-            Contract.Requires<ArgumentNullException>(switchSet != null);
+            Arg.NotNull(traceManagerConfig, nameof(traceManagerConfig));
+            Arg.NotNull(logWriter, nameof(logWriter));
+            Arg.NotNull(switchSet, nameof(switchSet));
 
             var traceWriterConfig = new TraceWriterConfig(logWriter, switchSet);
-            config.Writers.Add(traceWriterConfig);
+            traceManagerConfig.Writers.Add(traceWriterConfig);
             return traceWriterConfig;
         }
 
-        public static TraceWriterConfig UseLogWriter(this TraceManagerConfig config, ILogWriter logWriter, Type type, ITraceSwitch traceSwitch = null)
+        public static TraceWriterConfig UseLogWriter(this TraceManagerConfig traceManagerConfig, ILogWriter logWriter, Type type, ITraceSwitch traceSwitch = null)
         {
-            Contract.Requires<ArgumentNullException>(config != null);
-            Contract.Requires<ArgumentNullException>(logWriter != null);
-            Contract.Requires<ArgumentNullException>(type != null);
+            Arg.NotNull(traceManagerConfig, nameof(traceManagerConfig));
+            Arg.NotNull(logWriter, nameof(logWriter));
+            Arg.NotNull(type, nameof(type));
 
-            if (traceSwitch == null)
-            {
-                traceSwitch = TraceManagerConfig.CreateDefaultTraceSwitch();
-            }
-            var switches = new SwitchSet()
-                           {
-                               { type, traceSwitch }
-                           };
-            return UseLogWriter(config, logWriter, switches);
+            return UseLogWriter(traceManagerConfig, logWriter, CreateSwitchSet(type.GetCSharpName(), traceSwitch));
         }
 
-        public static TraceWriterConfig UseLogWriter(this TraceManagerConfig config, ILogWriter logWriter, string tracerName = Tracer.All, ITraceSwitch traceSwitch = null)
+        public static TraceWriterConfig UseLogWriter(this TraceManagerConfig traceManagerConfig,
+                                                     ILogWriter logWriter,
+                                                     string tracerName = Tracer.All,
+                                                     ITraceSwitch traceSwitch = null)
         {
-            Contract.Requires<ArgumentNullException>(config != null);
-            Contract.Requires<ArgumentNullException>(logWriter != null);
-            Contract.Requires<ArgumentNullException>(tracerName != null);
+            Arg.NotNull(traceManagerConfig, nameof(traceManagerConfig));
+            Arg.NotNull(logWriter, nameof(logWriter));
+            Arg.NotNull(tracerName, nameof(tracerName));
 
-            if (traceSwitch == null)
-            {
-                traceSwitch = TraceManagerConfig.CreateDefaultTraceSwitch();
-            }
-            var switches = new SwitchSet()
-                           {
-                               { tracerName, traceSwitch }
-                           };
-            return UseLogWriter(config, logWriter, switches);
+            return UseLogWriter(traceManagerConfig, logWriter, CreateSwitchSet(tracerName, traceSwitch));
         }
 
-        public static TraceWriterConfig TraceToConsole(this TraceManagerConfig config, SwitchSet switchSet, EntryFormatter<TraceEntry> traceFormatter = null)
+        public static TraceWriterConfig TraceToConsole(this TraceManagerConfig traceManagerConfig,
+                                                       SwitchSet switchSet,
+                                                       EntryFormatter<TraceEntry> traceFormatter = null,
+                                                       bool colorize = true)
         {
-            Contract.Requires<ArgumentNullException>(config != null);
-            Contract.Requires<ArgumentNullException>(switchSet != null);
+            Arg.NotNull(traceManagerConfig, nameof(traceManagerConfig));
+            Arg.NotNull(switchSet, nameof(switchSet));
 
-            if (traceFormatter == null)
-            {
-                traceFormatter = new DefaultTraceFormatter();
-            }
-
-            var traceWriterConfig = new TraceWriterConfig(new ConsoleLogWriterConfig().Format(traceFormatter), switchSet);
-            config.Writers.Add(traceWriterConfig);
-            return traceWriterConfig;
+            ConsoleLogWriterConfig consoleLogWriterConfig = traceManagerConfig.LogManagerConfig.UseConsole(colorize);
+            return TraceTo(traceManagerConfig, consoleLogWriterConfig, switchSet, traceFormatter);
         }
 
-        public static TraceWriterConfig TraceToConsole(this TraceManagerConfig config,
+        public static TraceWriterConfig TraceToConsole(this TraceManagerConfig traceManagerConfig,
                                                        string tracerName = Tracer.All,
                                                        ITraceSwitch traceSwitch = null,
-                                                       EntryFormatter<TraceEntry> traceFormatter = null)
+                                                       EntryFormatter<TraceEntry> traceFormatter = null,
+                                                       bool colorize = true)
         {
-            Contract.Requires<ArgumentNullException>(config != null);
-            Contract.Requires<ArgumentNullException>(tracerName != null);
+            Arg.NotNull(traceManagerConfig, nameof(traceManagerConfig));
+            Arg.NotNull(tracerName, nameof(tracerName));
 
-            if (traceSwitch == null)
-            {
-                traceSwitch = TraceManagerConfig.CreateDefaultTraceSwitch();
-            }
-            var switches = new SwitchSet()
-                           {
-                               { tracerName, traceSwitch }
-                           };
-            return TraceToConsole(config, switches, traceFormatter);
+            return TraceToConsole(traceManagerConfig, CreateSwitchSet(tracerName, traceSwitch), traceFormatter, colorize);
         }
 
-        public static TraceWriterConfig TraceToDebugger(this TraceManagerConfig config, SwitchSet switchSet, EntryFormatter<TraceEntry> traceFormatter = null)
+        public static TraceWriterConfig TraceToDebugger(this TraceManagerConfig traceManagerConfig, SwitchSet switchSet, EntryFormatter<TraceEntry> traceFormatter = null)
         {
-            Contract.Requires<ArgumentNullException>(config != null);
-            Contract.Requires<ArgumentNullException>(switchSet != null);
+            Arg.NotNull(traceManagerConfig, nameof(traceManagerConfig));
+            Arg.NotNull(switchSet, nameof(switchSet));
 
-            if (traceFormatter == null)
-            {
-                traceFormatter = new DefaultTraceFormatter();
-            }
-
-            var traceWriterConfig = new TraceWriterConfig(new DebuggerLogWriterConfig().Format(traceFormatter), switchSet);
-            config.Writers.Add(traceWriterConfig);
-            return traceWriterConfig;
+            DebuggerLogWriterConfig debuggerLogWriterConfig = traceManagerConfig.LogManagerConfig.UseDebugger();
+            return TraceTo(traceManagerConfig, debuggerLogWriterConfig, switchSet, traceFormatter);
         }
 
-        public static TraceWriterConfig TraceToDebugger(this TraceManagerConfig config,
+        public static TraceWriterConfig TraceToDebugger(this TraceManagerConfig traceManagerConfig,
                                                         string tracerName = Tracer.All,
                                                         ITraceSwitch traceSwitch = null,
                                                         EntryFormatter<TraceEntry> traceFormatter = null)
         {
-            Contract.Requires<ArgumentNullException>(config != null);
-            Contract.Requires<ArgumentNullException>(tracerName != null);
+            Arg.NotNull(traceManagerConfig, nameof(traceManagerConfig));
+            Arg.NotNull(tracerName, nameof(tracerName));
 
+            return TraceToDebugger(traceManagerConfig, CreateSwitchSet(tracerName, traceSwitch), traceFormatter);
+        }
+
+        public static TraceWriterConfig TraceToList(this TraceManagerConfig traceManagerConfig, IList<TraceEntry> list, SwitchSet switchSet)
+        {
+            Arg.NotNull(traceManagerConfig, nameof(traceManagerConfig));
+            Arg.NotNull(list, nameof(list));
+            Arg.NotNull(switchSet, nameof(switchSet));
+
+            var listLogWriterConfig = new ListLogWriterConfig<TraceEntry>()
+                                      {
+                                          List = list
+                                      };
+            return TraceTo(traceManagerConfig, listLogWriterConfig, switchSet);
+        }
+
+        public static TraceWriterConfig TraceToList(this TraceManagerConfig traceManagerConfig,
+                                                    IList<TraceEntry> list,
+                                                    string tracerName = Tracer.All,
+                                                    ITraceSwitch traceSwitch = null)
+        {
+            Arg.NotNull(traceManagerConfig, nameof(traceManagerConfig));
+            Arg.NotNull(list, nameof(list));
+            Arg.NotNull(tracerName, nameof(tracerName));
+
+            return TraceToList(traceManagerConfig, list, CreateSwitchSet(tracerName, traceSwitch));
+        }
+
+        /// <summary>
+        /// Returns <c>true</c> if a <see cref="TraceWriterConfig"/> exists that is associated with <paramref name="logWriterConfig"/>
+        /// </summary>
+        /// <param name="traceManagerConfig"></param>
+        /// <param name="logWriterConfig"></param>
+        /// <returns></returns>
+        public static bool HasTraceWriterFor(this TraceManagerConfig traceManagerConfig, ILogWriterConfig logWriterConfig)
+        {
+            Arg.NotNull(traceManagerConfig, nameof(traceManagerConfig));
+            Arg.NotNull(logWriterConfig, nameof(logWriterConfig));
+
+            foreach (var traceWriterConfig in traceManagerConfig.Writers)
+            {
+                if (ReferenceEquals(traceWriterConfig.LogWriterConfig, logWriterConfig))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private static SwitchSet CreateSwitchSet(string rootTracerName, ITraceSwitch traceSwitch = null)
+        {
+            if (rootTracerName == null)
+            {
+                rootTracerName = Tracer.All;
+            }
             if (traceSwitch == null)
             {
                 traceSwitch = TraceManagerConfig.CreateDefaultTraceSwitch();
             }
-            var switches = new SwitchSet()
-                           {
-                               { tracerName, traceSwitch }
-                           };
-            return TraceToDebugger(config, switches, traceFormatter);
+            return new SwitchSet()
+                   {
+                       { rootTracerName, traceSwitch }
+                   };
         }
 
     }

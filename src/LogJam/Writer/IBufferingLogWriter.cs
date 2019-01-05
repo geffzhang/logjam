@@ -1,6 +1,6 @@
-﻿// --------------------------------------------------------------------------------------------------------------------
+// --------------------------------------------------------------------------------------------------------------------
 // <copyright file="IBufferingLogWriter.cs">
-// Copyright (c) 2011-2015 https://github.com/logjam2.  
+// Copyright (c) 2011-2016 https://github.com/logjam2. 
 // </copyright>
 // Licensed under the <a href="https://github.com/logjam2/logjam/blob/master/LICENSE.txt">Apache License, Version 2.0</a>;
 // you may not use this file except in compliance with the License.
@@ -10,15 +10,18 @@
 namespace LogJam.Writer
 {
     using System;
+#if CODECONTRACTS
     using System.Collections.Generic;
     using System.Diagnostics.Contracts;
-
+#endif
 
     /// <summary>
     /// Adds support for "smart" flushing logic to log writers that buffer output, and need to know
     /// when it makes sense to flush their buffers.
     /// </summary>
+#if CODECONTRACTS
     [ContractClass(typeof(BufferingLogWriterContract))]
+#endif
     public interface IBufferingLogWriter : ILogWriter
     {
 
@@ -30,7 +33,7 @@ namespace LogJam.Writer
 
     }
 
-
+#if CODECONTRACTS
     [ContractClassFor(typeof(IBufferingLogWriter))]
     internal abstract class BufferingLogWriterContract : IBufferingLogWriter
     {
@@ -51,16 +54,17 @@ namespace LogJam.Writer
             }
         }
 
-        #region Not in contract
+#region Not in contract
 
         public bool TryGetEntryWriter<TEntry>(out IEntryWriter<TEntry> entryWriter) where TEntry : ILogEntry
         {
             throw new NotImplementedException();
         }
 
-        public IEnumerable<KeyValuePair<Type, object>> EntryWriters { get { throw new NotImplementedException(); } }
+		public IEnumerable<KeyValuePair<Type, IEntryWriter>> EntryWriters { get { throw new NotImplementedException(); } }
 
-        #endregion
+#endregion
     }
+#endif
 
 }

@@ -1,6 +1,6 @@
-﻿// --------------------------------------------------------------------------------------------------------------------
+// --------------------------------------------------------------------------------------------------------------------
 // <copyright file="EnumerableWrapper.cs">
-// Copyright (c) 2011-2015 https://github.com/logjam2.  
+// Copyright (c) 2011-2016 https://github.com/logjam2. 
 // </copyright>
 // Licensed under the <a href="https://github.com/logjam2/logjam/blob/master/LICENSE.txt">Apache License, Version 2.0</a>;
 // you may not use this file except in compliance with the License.
@@ -9,14 +9,14 @@
 
 namespace LogJam.Util
 {
-    using System;
     using System.Collections;
     using System.Collections.Generic;
-    using System.Diagnostics.Contracts;
+
+    using LogJam.Shared.Internal;
 
 
     /// <summary>
-    /// Wraps an <see cref="IEnumerable{T}" />.  Used to prevent access to the underlying collection via casting.
+    /// Wraps an <see cref="IEnumerable{T}" />. Used to prevent access to the underlying collection via casting.
     /// </summary>
     /// <typeparam name="T"></typeparam>
     internal sealed class EnumerableWrapper<T> : IEnumerable<T>
@@ -26,7 +26,7 @@ namespace LogJam.Util
 
         internal EnumerableWrapper(IEnumerable<T> enumerable)
         {
-            Contract.Requires<ArgumentNullException>(enumerable != null);
+            Arg.NotNull(enumerable, nameof(enumerable));
 
             _enumerable = enumerable;
         }

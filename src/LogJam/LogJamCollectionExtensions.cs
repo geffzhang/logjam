@@ -1,6 +1,6 @@
 ﻿// --------------------------------------------------------------------------------------------------------------------
 // <copyright file="LogJamCollectionExtensions.cs">
-// Copyright (c) 2011-2015 https://github.com/logjam2.  
+// Copyright (c) 2011-2016 https://github.com/logjam2. 
 // </copyright>
 // Licensed under the <a href="https://github.com/logjam2/logjam/blob/master/LICENSE.txt">Apache License, Version 2.0</a>;
 // you may not use this file except in compliance with the License.
@@ -11,13 +11,13 @@ namespace LogJam
 {
     using System;
     using System.Collections.Generic;
-    using System.Diagnostics.Contracts;
     using System.IO;
     using System.Linq;
 
-    using LogJam.Format;
+    using LogJam.Shared.Internal;
     using LogJam.Trace;
     using LogJam.Writer;
+    using LogJam.Writer.Text;
 
 
     /// <summary>
@@ -36,11 +36,11 @@ namespace LogJam
         public static void WriteEntriesTo<TEntry>(this IEnumerable<TEntry> entries, TextWriter textWriter, EntryFormatter<TEntry> entryFormatter = null)
             where TEntry : ILogEntry
         {
-            Contract.Requires<ArgumentNullException>(entries != null);
-            Contract.Requires<ArgumentNullException>(textWriter != null);
+            Arg.NotNull(entries, nameof(entries));
+            Arg.NotNull(textWriter, nameof(textWriter));
 
             if (entryFormatter == null)
-            {   // Try creating the default log formatter
+            { // Try creating the default log formatter
                 entryFormatter = DefaultFormatterAttribute.GetDefaultFormatterFor<TEntry>();
                 if (entryFormatter == null)
                 {
@@ -49,17 +49,24 @@ namespace LogJam
                 }
             }
 
-            var logWriter = new TextWriterLogWriter(textWriter, new SetupLog(), disposeWriter: false);
+            var setupLog = new SetupLog();
+            var formatWriter = new TextWriterFormatWriter(setupLog, textWriter, disposeWriter: false);
+            var logWriter = new TextLogWriter(setupLog, formatWriter);
             logWriter.AddFormat(entryFormatter);
-            IEntryWriter<TEntry> entryWriter;
-            logWriter.TryGetEntryWriter(out entryWriter);
             using (logWriter)
             {
                 logWriter.Start();
-                for (var enumerator = entries.GetEnumerator(); enumerator.MoveNext();)
+
+                IEntryWriter<TEntry> entryWriter;
+                logWriter.TryGetEntryWriter(out entryWriter);
+                using (logWriter)
                 {
-                    TEntry logEntry = enumerator.Current;
-                    entryWriter.Write(ref logEntry);
+                    logWriter.Start();
+                    for (var enumerator = entries.GetEnumerator(); enumerator.MoveNext();)
+                    {
+                        TEntry logEntry = enumerator.Current;
+                        entryWriter.Write(ref logEntry);
+                    }
                 }
             }
         }
@@ -86,7 +93,7 @@ namespace LogJam
         public static void GetEntryWriters<TEntry>(this IEnumerable<ILogWriter> logWriterCollection, List<IEntryWriter<TEntry>> entryWriters)
             where TEntry : ILogEntry
         {
-            Contract.Requires<ArgumentNullException>(logWriterCollection != null);
+            Arg.NotNull(logWriterCollection, nameof(logWriterCollection));
 
             foreach (ILogWriter logWriter in logWriterCollection)
             {
@@ -107,13 +114,13 @@ namespace LogJam
         /// <param name="logWriterCollection"></param>
         /// <param name="entryWriter"></param>
         /// <returns>
-        /// <c>true</c> if one or more <see cref="IEntryWriter{TEntry}" /> instances were found.  <c>false</c> if no
+        /// <c>true</c> if one or more <see cref="IEntryWriter{TEntry}" /> instances were found. <c>false</c> if no
         /// matching objects were found.
         /// </returns>
         public static bool GetSingleEntryWriter<TEntry>(this IEnumerable<ILogWriter> logWriterCollection, out IEntryWriter<TEntry> entryWriter)
             where TEntry : ILogEntry
         {
-            Contract.Requires<ArgumentNullException>(logWriterCollection != null);
+            Arg.NotNull(logWriterCollection, nameof(logWriterCollection));
 
             var listLogWriters = new List<IEntryWriter<TEntry>>();
             GetEntryWriters(logWriterCollection, listLogWriters);
@@ -140,13 +147,13 @@ namespace LogJam
         /// <typeparam name="TEntry"></typeparam>
         /// <param name="entryWriterCollection"></param>
         /// <returns>
-        /// <c>true</c> if one or more <see cref="IEntryWriter{TEntry}" /> instances were found.  <c>false</c> if no
+        /// <c>true</c> if one or more <see cref="IEntryWriter{TEntry}" /> instances were found. <c>false</c> if no
         /// matching objects were found.
         /// </returns>
         public static IEntryWriter<TEntry> GetSingleEntryWriter<TEntry>(this IEnumerable<IEntryWriter<TEntry>> entryWriterCollection)
             where TEntry : ILogEntry
         {
-            Contract.Requires<ArgumentNullException>(entryWriterCollection != null);
+            Arg.NotNull(entryWriterCollection, nameof(entryWriterCollection));
 
             int count = entryWriterCollection.Count();
             if (count == 0)

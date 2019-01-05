@@ -1,6 +1,6 @@
 ﻿// --------------------------------------------------------------------------------------------------------------------
 // <copyright file="Tracer.cs">
-// Copyright (c) 2011-2015 https://github.com/logjam2.  
+// Copyright (c) 2011-2016 https://github.com/logjam2. 
 // </copyright>
 // Licensed under the <a href="https://github.com/logjam2/logjam/blob/master/LICENSE.txt">Apache License, Version 2.0</a>;
 // you may not use this file except in compliance with the License.
@@ -10,8 +10,9 @@
 namespace LogJam.Trace
 {
     using System;
-    using System.Diagnostics.Contracts;
     using System.Linq;
+
+    using LogJam.Shared.Internal;
 
 
     /// <summary>
@@ -56,7 +57,7 @@ namespace LogJam.Trace
         /// Initializes a new instance of the <see cref="Tracer" /> class.
         /// </summary>
         /// <param name="name">
-        /// The <see cref="Tracer" /> name.  Uniquely identifies a <see cref="Tracer" /> within an <see cref="ITracerFactory" />.
+        /// The <see cref="Tracer" /> name. Uniquely identifies a <see cref="Tracer" /> within an <see cref="ITracerFactory" />.
         /// Often is the class name or namespace name.
         /// </param>
         /// <param name="traceWriters">
@@ -64,8 +65,8 @@ namespace LogJam.Trace
         /// </param>
         internal Tracer(string name, TraceWriter[] traceWriters)
         {
-            Contract.Requires<ArgumentNullException>(name != null);
-            Contract.Requires<ArgumentNullException>(traceWriters != null);
+            Arg.NotNull(name, nameof(name));
+            Arg.NotNull(traceWriters, nameof(traceWriters));
 
             _name = name.Trim();
             Configure(traceWriters);
@@ -76,7 +77,7 @@ namespace LogJam.Trace
         #region Public Properties
 
         /// <summary>
-        /// The name of this <see cref="Tracer" />.  This is usually the full name of the class that is calling <c>Tracer</c>
+        /// The name of this <see cref="Tracer" />. This is usually the full name of the class that is calling <c>Tracer</c>
         /// methods.
         /// </summary>
         public string Name { get { return _name; } }
@@ -111,7 +112,7 @@ namespace LogJam.Trace
 
         public void Trace(TraceLevel traceLevel, string message)
         {
-            Contract.Requires<ArgumentNullException>(message != null);
+            Arg.NotNull(message, nameof(message));
 
             if (IsTraceEnabled(traceLevel))
             {
@@ -122,7 +123,7 @@ namespace LogJam.Trace
 
         public void Trace(TraceLevel traceLevel, object details, string message)
         {
-            Contract.Requires<ArgumentNullException>(message != null);
+            Arg.NotNull(message, nameof(message));
 
             if (IsTraceEnabled(traceLevel))
             {
@@ -133,14 +134,14 @@ namespace LogJam.Trace
 
         public void Trace(TraceLevel traceLevel, Exception exception, string message)
         {
-            Contract.Requires<ArgumentNullException>(message != null);
+            Arg.NotNull(message, nameof(message));
 
             Trace(traceLevel, (object) exception, message);
         }
 
         public void Trace(TraceLevel traceLevel, Exception exception, string message, object arg0)
         {
-            Contract.Requires<ArgumentNullException>(message != null);
+            Arg.NotNull(message, nameof(message));
 
             if (IsTraceEnabled(traceLevel))
             {
@@ -152,7 +153,7 @@ namespace LogJam.Trace
 
         public void Trace(TraceLevel traceLevel, Exception exception, string message, object arg0, object arg1)
         {
-            Contract.Requires<ArgumentNullException>(message != null);
+            Arg.NotNull(message, nameof(message));
 
             if (IsTraceEnabled(traceLevel))
             {
@@ -164,7 +165,7 @@ namespace LogJam.Trace
 
         public void Trace(TraceLevel traceLevel, Exception exception, string message, object arg0, object arg1, object arg2)
         {
-            Contract.Requires<ArgumentNullException>(message != null);
+            Arg.NotNull(message, nameof(message));
 
             if (IsTraceEnabled(traceLevel))
             {
@@ -176,8 +177,8 @@ namespace LogJam.Trace
 
         public void Trace(TraceLevel traceLevel, Exception exception, string message, params object[] args)
         {
-            Contract.Requires<ArgumentNullException>(message != null);
-            Contract.Requires<ArgumentNullException>(args != null);
+            Arg.NotNull(message, nameof(message));
+            Arg.NotNull(args, nameof(args));
 
             if (IsTraceEnabled(traceLevel))
             {
@@ -192,7 +193,7 @@ namespace LogJam.Trace
         #region Internal methods
 
         /// <summary>
-        /// Configuration method called by <see cref="TraceManager" /> after <see cref="TraceManager.GetTracer" /> is called,
+        /// Configuration method called by <see cref="TraceManager" /> after <see cref="TraceManager.GetTracer(string)" /> is called,
         /// or when the configuration is changed for this <c>Tracer</c>.
         /// </summary>
         /// <param name="traceWriters">
@@ -205,8 +206,7 @@ namespace LogJam.Trace
         /// </returns>
         internal TraceWriter[] Configure(TraceWriter[] traceWriters)
         {
-            Contract.Requires<ArgumentNullException>(traceWriters != null);
-            Contract.Requires<ArgumentException>(traceWriters.All(writer => writer != null));
+            Arg.NoneNull(traceWriters, nameof(traceWriters));
 
             ITraceWriter newWriter;
             if (traceWriters.Length == 0)
@@ -222,7 +222,7 @@ namespace LogJam.Trace
                 newWriter = new FanOutTraceWriter(traceWriters);
             }
 
-            TraceWriter[] previousTraceWriters = _writer == null ? null : _writer.ToTraceWriterArray();
+            TraceWriter[] previousTraceWriters = _writer?.ToTraceWriterArray();
 
             // REVIEW: This is a lockless set - ok?
             // The expectation is that these values are set infrequently, and it doesn't matter if the switch changes before the traceLogWriter does

@@ -1,6 +1,6 @@
-﻿// --------------------------------------------------------------------------------------------------------------------
+// --------------------------------------------------------------------------------------------------------------------
 // <copyright file="TraceManagerConfigTests.cs">
-// Copyright (c) 2011-2015 https://github.com/logjam2.  
+// Copyright (c) 2011-2016 https://github.com/logjam2. 
 // </copyright>
 // Licensed under the <a href="https://github.com/logjam2/logjam/blob/master/LICENSE.txt">Apache License, Version 2.0</a>;
 // you may not use this file except in compliance with the License.
@@ -12,6 +12,7 @@ namespace LogJam.Internal.UnitTests.Trace
     using LogJam.Trace;
     using LogJam.Trace.Format;
     using LogJam.Writer;
+    using LogJam.Writer.Text;
 
     using Xunit;
 
@@ -26,7 +27,7 @@ namespace LogJam.Internal.UnitTests.Trace
         private static readonly bool s_inDebugger = System.Diagnostics.Debugger.IsAttached;
 
         /// <summary>
-        /// By default, info and greater messages are written to a <see cref="DebuggerLogWriter" />.
+        /// By default, info and greater messages are written to a <see cref="DebuggerFormatWriter" />.
         /// </summary>
         [Fact]
         public void VerifyDefaultTraceManagerConfig()
@@ -42,19 +43,32 @@ namespace LogJam.Internal.UnitTests.Trace
             }
         }
 
+#pragma warning disable xUnit1013 // Public method should be marked as test
         public static void AssertEquivalentToDefaultTraceManagerConfig(TraceManager traceManager)
+#pragma warning restore xUnit1013 // Public method should be marked as test
         {
             var tracer = traceManager.GetTracer("");
             Assert.Equal(s_inDebugger, tracer.IsInfoEnabled());
             Assert.False(tracer.IsVerboseEnabled());
 
-            // Walk the Tracer object to ensure everything is as expected for default configuration
-            Assert.IsType<TraceWriter>(tracer.Writer);
-            var traceWriter = (TraceWriter) tracer.Writer;
-            Assert.IsType<TextLogWriter.InnerEntryWriter<TraceEntry>>(traceWriter.InnerEntryWriter);
-            var entryWriter = (TextLogWriter.InnerEntryWriter<TraceEntry>) traceWriter.InnerEntryWriter;
-            Assert.IsType<DefaultTraceFormatter>(entryWriter.Formatter);
-            Assert.IsType<DebuggerLogWriter>(entryWriter.Parent);
+            if (s_inDebugger)
+            {
+                // Walk the Tracer object to ensure everything is as expected for default configuration
+                Assert.IsType<TraceWriter>(tracer.Writer);
+                var traceWriter = (TraceWriter) tracer.Writer;
+                Assert.IsType<SynchronizingProxyLogWriter.SynchronizingProxyEntryWriter<TraceEntry>>(traceWriter.InnerEntryWriter);
+                var synchronizingEntryWriter = (SynchronizingProxyLogWriter.SynchronizingProxyEntryWriter<TraceEntry>) traceWriter.InnerEntryWriter;
+                Assert.IsType<TextLogWriter.InnerEntryWriter<TraceEntry>>(synchronizingEntryWriter.InnerEntryWriter);
+                var entryWriter = (TextLogWriter.InnerEntryWriter<TraceEntry>) synchronizingEntryWriter.InnerEntryWriter;
+
+                Assert.IsType<DefaultTraceFormatter>(entryWriter.Formatter);
+                Assert.IsType<TextLogWriter>(entryWriter.Parent);
+            }
+            else
+            {
+                // Walk the Tracer object to ensure everything is as expected for default configuration
+                Assert.IsType<NoOpTraceWriter>(tracer.Writer);
+            }
         }
 
     }

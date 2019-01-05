@@ -6,20 +6,20 @@
 // you may not use this file except in compliance with the License.
 // --------------------------------------------------------------------------------------------------------------------
 
-namespace LogJam.Trace
+namespace LogJam.Activity
 {
-	using System;
-	using System.Diagnostics.Contracts;
+    using System;
 
-	using LogJam.Util;
+    using LogJam.Shared.Internal;
+    using LogJam.Util;
 
 
-	/// <summary>
+    /// <summary>
 	/// Base class for all activity records.
 	/// </summary>
 	/// <remarks>
 	/// An activity record tracks the beginning and ending of an activity, along with any activity-specific
-	/// metadata.  It also can be correlated with trace records that occur within the activity.
+	/// metadata. It also can be correlated with trace records that occur within the activity.
 	/// </remarks>
 	public abstract class ActivityRecord
 	{
@@ -44,7 +44,8 @@ namespace LogJam.Trace
 		/// </param>
 		protected ActivityRecord(string sourceName)
 		{
-			Contract.Requires<ArgumentException>(! string.IsNullOrWhiteSpace(sourceName));
+            Arg.NotNullOrWhitespace(sourceName, nameof(sourceName));
+
 			SourceName = sourceName;
 		}
 
@@ -119,15 +120,13 @@ namespace LogJam.Trace
 		#endregion
 
 		/// <summary>
-		/// CreateLogWriter and returns a new activity ID.  May be overridden.
+		/// CreateLogWriter and returns a new activity ID. May be overridden.
 		/// </summary>
 		/// <returns>
 		/// The <see cref="string"/>.
 		/// </returns>
 		public virtual string CreateNewId()
 		{
-			Contract.Ensures(! string.IsNullOrWhiteSpace(Contract.Result<string>()));
-
 			return Guid.NewGuid().ToString();
 		}
 

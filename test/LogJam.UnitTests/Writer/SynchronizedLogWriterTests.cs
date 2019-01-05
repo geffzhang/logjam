@@ -1,6 +1,6 @@
-﻿// --------------------------------------------------------------------------------------------------------------------
+// --------------------------------------------------------------------------------------------------------------------
 // <copyright file="SynchronizedLogWriterTests.cs">
-// Copyright (c) 2011-2015 https://github.com/logjam2.  
+// Copyright (c) 2011-2016 https://github.com/logjam2. 
 // </copyright>
 // Licensed under the <a href="https://github.com/logjam2/logjam/blob/master/LICENSE.txt">Apache License, Version 2.0</a>;
 // you may not use this file except in compliance with the License.
@@ -41,23 +41,24 @@ namespace LogJam.UnitTests.Writer
             ValidateSyncedLogWriter validatingLogWriter;
             using (var logManager = new LogManager())
             {
+                // This LogWriter throws Assert exceptions if writes aren't properly synchronized
                 validatingLogWriter = new ValidateSyncedLogWriter(logManager.SetupTracerFactory, s_defaultWriteDelay);
                 var logWriterConfig = logManager.Config.UseLogWriter(validatingLogWriter);
-                logWriterConfig.Synchronized = false;
+                logWriterConfig.Synchronize = false;
 
                 AggregateException aggregateException = null;
                 try
                 {
-                    ValidateWithParallelLoad(logManager, c_defaultParallelThreads, c_defaultEntriesPerThread);
+                    RunParallelWrites(logManager, c_defaultParallelThreads, c_defaultEntriesPerThread);
                 }
                 catch (AggregateException aggExcp)
                 {
                     aggregateException = aggExcp;
                 }
 
-                // Expected: Asserts must fail
+                // Expected: some Asserts will fail
                 Assert.NotNull(aggregateException);
-                Assert.Equal(c_defaultParallelThreads, aggregateException.InnerExceptions.Count);
+                Assert.InRange(aggregateException.InnerExceptions.Count, c_defaultParallelThreads / 4, c_defaultParallelThreads);
                 Assert.True(aggregateException.InnerExceptions.All(excp => excp is AssertActualExpectedException));
             }
 
@@ -75,9 +76,9 @@ namespace LogJam.UnitTests.Writer
             {
                 validatingLogWriter = new ValidateSyncedLogWriter(logManager.SetupTracerFactory, s_defaultWriteDelay);
                 var logWriterConfig = logManager.Config.UseLogWriter(validatingLogWriter);
-                Assert.True(logWriterConfig.Synchronized);
+                Assert.True(logWriterConfig.Synchronize);
 
-                ValidateWithParallelLoad(logManager, c_defaultParallelThreads, c_defaultEntriesPerThread);
+                RunParallelWrites(logManager, c_defaultParallelThreads, c_defaultEntriesPerThread);
             }
 
             Assert.Equal(c_defaultParallelThreads * c_defaultEntriesPerThread, validatingLogWriter.WritesCompleted);
@@ -96,13 +97,19 @@ namespace LogJam.UnitTests.Writer
                 var logWriterConfig = logManager.Config.UseLogWriter(validatingLogWriter);
                 logWriterConfig.BackgroundLogging = true;
 
-                ValidateWithParallelLoad(logManager, c_defaultParallelThreads, c_defaultEntriesPerThread);
+                RunParallelWrites(logManager, c_defaultParallelThreads, c_defaultEntriesPerThread);
             }
 
             Assert.Equal(c_defaultParallelThreads * c_defaultEntriesPerThread, validatingLogWriter.WritesCompleted);
         }
 
-        internal void ValidateWithParallelLoad(LogManager logManager, int parallelThreads, int entriesPerThread)
+        /// <summary>
+        /// Creates parallel load for verifying synchronization.
+        /// </summary>
+        /// <param name="logManager"></param>
+        /// <param name="parallelThreads"></param>
+        /// <param name="entriesPerThread"></param>
+        internal void RunParallelWrites(LogManager logManager, int parallelThreads, int entriesPerThread)
         {
             var entryWriter = logManager.GetEntryWriter<CounterLogEntry>();
             Action loggingFunc = () =>
@@ -118,7 +125,7 @@ namespace LogJam.UnitTests.Writer
 
 
         /// <summary>
-        /// A simple test log entry.  The contents aren't actually used.
+        /// A simple test log entry. The contents aren't actually used.
         /// </summary>
         public struct CounterLogEntry : ILogEntry
         {

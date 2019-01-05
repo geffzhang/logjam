@@ -1,6 +1,6 @@
-﻿// --------------------------------------------------------------------------------------------------------------------
+// --------------------------------------------------------------------------------------------------------------------
 // <copyright file="JsonTypeHintAttribute.cs">
-// Copyright (c) 2011-2015 https://github.com/logjam2.  
+// Copyright (c) 2011-2016 https://github.com/logjam2. 
 // </copyright>
 // Licensed under the <a href="https://github.com/logjam2/logjam/blob/master/LICENSE.txt">Apache License, Version 2.0</a>;
 // you may not use this file except in compliance with the License.
@@ -11,8 +11,10 @@ namespace LogJam.Config.Json
 {
     using System;
     using System.Collections.Generic;
-    using System.Diagnostics.Contracts;
     using System.Linq;
+    using System.Reflection;
+
+    using LogJam.Shared.Internal;
 
 
     /// <summary>
@@ -31,7 +33,7 @@ namespace LogJam.Config.Json
         /// <param name="value"></param>
         public JsonTypeHintAttribute(string property, string value)
         {
-            Contract.Requires<ArgumentException>(! string.IsNullOrWhiteSpace(property));
+            Arg.NotNullOrWhitespace(property, nameof(property));
 
             Property = property;
             Value = value;
@@ -88,9 +90,9 @@ namespace LogJam.Config.Json
         /// <returns></returns>
         public static IEnumerable<JsonTypeHintAttribute> For(Type type)
         {
-            Contract.Requires<ArgumentNullException>(type != null);
+            Arg.NotNull(type, nameof(type));
 
-            return type.GetCustomAttributes(typeof(JsonTypeHintAttribute), false).Cast<JsonTypeHintAttribute>();
+            return type.GetTypeInfo().GetCustomAttributes(typeof(JsonTypeHintAttribute), false).Cast<JsonTypeHintAttribute>();
         }
 
     }
